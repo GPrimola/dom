@@ -1,18 +1,19 @@
-defmodule Dom do
-  @moduledoc """
-  Documentation for `Dom`.
-  """
-
-  @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> Dom.hello()
-      :world
-
-  """
-  def hello do
-    :world
+defmodule DOM do
+  defmacro __using__(_opts \\ []) do
+    quote do
+      alias DOM.{
+        DOMAttr,
+        DOMDocument,
+        DOMDocumentFragment,
+        DOMDocumentType,
+        DOMElement,
+        DOMMatrix,
+        DOMNode,
+        DOMPoint,
+        DOMRect,
+        DOMShadowRoot,
+        HTMLOrSVGElement
+      }
+    end
   end
 end
