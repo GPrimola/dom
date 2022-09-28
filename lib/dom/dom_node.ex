@@ -7,7 +7,7 @@ defmodule DOM.DOMNode do
 
   defmacro __using__(_opts \\ []) do
     quote do
-      @node_fields [
+      @dom_node_fields [
         :node_type,
         :node_name,
         :node_value,
@@ -67,6 +67,36 @@ defmodule DOM.DOMNode do
         contained_by: @document_position_contained_by,
         implementation_specific: @document_position_implementation_specific
       }
+
+      defimpl Enumerable do
+
+    def count(%{child_nodes: children} = _node)
+    when children == [], do: 1
+
+    def count(node) do
+      Enum.reduce(node.child_nodes, 1, fn node, count_nodes ->
+        count_nodes + count(node)
+      end)
+    end
+
+    def member?(_node, _element), do: {:error, __MODULE__}
+
+    @doc """
+      This reduce function traverse the tree in pre-order.
+    """
+    def reduce(_node, {:halt, acc}, _fun), do: {:halted, acc}
+    def reduce(node, {:suspend, acc}, fun), do: {:suspended, acc, &reduce(node, &1, fun)}
+    def reduce(%{child_nodes: children} = node, {:cont, acc}, fun), do: reduce(children, fun.(node, acc), fun)
+    def reduce([] = _children, {:cont, acc}, fun), do: {:done, acc}
+    def reduce([node | siblings] = _children, {:cont, acc}, fun) do
+      with {:done, accu} <- reduce(node, {:cont, acc}, fun),
+        {:done, accu} <- reduce(siblings, {:cont, accu}, fun) do
+        {:done, accu}
+      end
+    end
+
+    def slice(node), do: {:error, __MODULE__}
+  end
     end
   end
 
@@ -88,7 +118,7 @@ defmodule DOM.DOMNode do
         }
 
   @spec get_root_node(__MODULE__.t(), boolean()) :: __MODULE__.t()
-  def get_root_node(dom_node, composed) do
+  def get_root_node(dom_node, composed \\ false) do
     if is_nil(dom_node.parent_node),
       do: dom_node,
       else: get_root_node(dom_node.parent_node, composed)
@@ -100,6 +130,7 @@ defmodule DOM.DOMNode do
 
   @spec append_child(__MODULE__.t(), __MODULE__.t()) :: __MODULE__.t()
   def append_child(%{child_nodes: child_nodes} = dom_node, child_node) do
+    child_node = %{child_node | parent_node: dom_node}
     child_nodes = List.insert_at(child_nodes, -1, child_node)
     %{dom_node | child_nodes: child_nodes}
   end

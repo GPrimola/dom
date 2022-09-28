@@ -6,7 +6,7 @@ defmodule DOM.DOMShadowRoot do
   use DOM
   use DOMDocumentFragment
 
-  defstruct @document_fragment_fields ++
+  defstruct @dom_document_fragment_fields ++
               [
                 :mode,
                 :delegate_focus,

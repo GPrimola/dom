@@ -4,13 +4,16 @@ defmodule DOM.DOMDocumentFragment do
     https://dom.spec.whatwg.org/#interface-documentfragment
   """
   use DOM
+  use DOMNode
 
   defmacro __using__(_opts \\ []) do
     quote do
       use DOMNode
-      @document_fragment_fields @node_fields
+      @dom_document_fragment_fields @dom_node_fields
     end
   end
+
+  defstruct @dom_node_fields
 
   @type t :: DOMNode.t()
 end

@@ -9,7 +9,7 @@ defmodule DOM.DOMElement do
     quote do
       use DOMNode
 
-      @dom_element_fields @node_fields ++
+      @dom_element_fields @dom_node_fields ++
                             [
                               :namespace_uri,
                               :prefix,

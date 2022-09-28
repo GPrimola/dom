@@ -1,12 +1,12 @@
 defmodule DOM.DOMAttr do
   @moduledoc """
-    Implements interface Attr
+    Defines interface Attr
     https://dom.spec.whatwg.org/#interface-attr
   """
   use DOM
   use DOMNode
 
-  defstruct @node_fields ++
+  defstruct @dom_node_fields ++
               [
                 :namespace_uri,
                 :prefix,
