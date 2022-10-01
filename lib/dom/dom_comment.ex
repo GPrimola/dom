@@ -10,5 +10,4 @@ defmodule DOM.DOMComment do
   defstruct @dom_character_data_fields
 
   @type t :: %__MODULE__{}
-
 end

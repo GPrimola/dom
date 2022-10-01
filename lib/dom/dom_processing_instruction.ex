@@ -8,7 +8,8 @@ defmodule DOM.DOMProcessingInstruction do
 
   defstruct @dom_character_data_fields ++ [:target]
 
-  @type t :: Map.merge(DOMCharacterData.t(), %__MODULE__{
-    target: binary()
-  })
+  @type t ::
+          Map.merge(DOMCharacterData.t(), %__MODULE__{
+            target: binary()
+          })
 end

@@ -20,7 +20,7 @@ defmodule DOM.DOMElement do
                               :class_list,
                               :slot,
                               :shadow_root,
-                              attributes: %{}
+                              attributes: []
                             ]
     end
   end
@@ -35,7 +35,9 @@ defmodule DOM.DOMElement do
             class_name: binary(),
             class_list: list(),
             slot: binary(),
-            attributes: map(),
+
+            # using keyword list to preserve document order
+            attributes: keyword(),
             shadow_root: map()
           })
 
@@ -46,7 +48,7 @@ defmodule DOM.DOMElement do
   def has_attributes(element)
 
   def has_attributes(%{attributes: attrs} = _dom_element),
-    do: map_size(attrs) > 0
+    do: length(attrs) > 0
 
   @doc """
     https://dom.spec.whatwg.org/#dom-element-getattributenames
@@ -55,7 +57,7 @@ defmodule DOM.DOMElement do
   def get_attribute_names(element)
 
   def get_attribute_names(%{attributes: attrs} = _dom_element),
-    do: Map.keys(attrs)
+    do: Keystring.keys(attrs)
 
   @doc """
     https://dom.spec.whatwg.org/#dom-element-getattribute
@@ -64,7 +66,7 @@ defmodule DOM.DOMElement do
   def get_attribute(element, qualified_name)
 
   def get_attribute(%{attributes: attrs} = _dom_element, qualified_name),
-    do: attrs |> Map.get(qualified_name, %DOMAttr{}) |> Map.get(:value)
+    do: attrs |> Keystring.get(qualified_name, %DOMAttr{}) |> Map.get(:value)
 
   @doc """
     https://dom.spec.whatwg.org/#dom-element-setattribute
@@ -82,6 +84,7 @@ defmodule DOM.DOMElement do
       owner_document: dom_element.owner_document,
       owner_element: dom_element,
       local_name: qualified_name,
+      name: qualified_name,
       value: value
     }
 
@@ -95,7 +98,13 @@ defmodule DOM.DOMElement do
   def set_attribute_node(element, attribute)
 
   def set_attribute_node(dom_element, %DOMAttr{} = attribute),
-    do: Map.update(dom_element, :attributes, %{}, &Map.put(&1, attribute.local_name, attribute))
+    do:
+      Map.update(
+        dom_element,
+        :attributes,
+        [],
+        &Keystring.put(&1, attribute.local_name, attribute)
+      )
 
   @doc """
     https://dom.spec.whatwg.org/#dom-element-hasattribute
@@ -104,7 +113,7 @@ defmodule DOM.DOMElement do
   def has_attribute(element, qualified_name)
 
   def has_attribute(%{attributes: attrs} = _dom_element, qualified_name),
-    do: Map.has_key?(attrs, String.downcase(qualified_name))
+    do: Keystring.has_key?(attrs, String.downcase(qualified_name))
 
   @doc """
     https://dom.spec.whatwg.org/#dom-element-getattributenode
@@ -113,7 +122,16 @@ defmodule DOM.DOMElement do
   def get_attribute_node(element, qualified_name)
 
   def get_attribute_node(%{attributes: attrs}, qualified_name),
-    do: Map.get(attrs, qualified_name)
+    do: Keystring.get(attrs, qualified_name)
+
+  @doc """
+    This function is not part of the official DOM Element interface
+  """
+  @spec get_attribute_nodes(__MODULE__.t()) :: list(DOMAttr.t())
+  def get_attribute_nodes(element)
+
+  def get_attribute_nodes(%{attributes: attrs} = _dom_element),
+    do: attrs |> Enum.map(&elem(&1, 1))
 
   @doc """
     https://dom.spec.whatwg.org/#dom-element-attachshadow
@@ -139,24 +157,29 @@ defmodule DOM.DOMElement do
   @spec get_elements_by_tag_name(__MODULE__.t(), binary()) :: list(__MODULE__.t())
   def get_elements_by_tag_name(element, qualified_name)
 
-  def get_elements_by_tag_name(dom_element, qualified_name) do
-    dom_element.child_nodes
-    |> Enum.filter(fn
-      %{tag_name: tag_name} ->
-        qualified_name == "*" or tag_name =~ qualified_name
+  def get_elements_by_tag_name(%{child_nodes: child_nodes} = dom_element, qualified_name) do
+    elements =
+      child_nodes
+      |> Enum.filter(fn
+        %{tag_name: tag_name} ->
+          qualified_name == "*" or tag_name =~ qualified_name
 
-      _ ->
-        false
-    end)
-    |> Enum.reduce([], fn element, elements ->
-      elements = get_elements_by_tag_name(element, qualified_name) ++ elements
-      [element | elements]
-    end)
+        _ ->
+          false
+      end)
+      |> Enum.reduce([], fn element, elements ->
+        elements = get_elements_by_tag_name(element, qualified_name) ++ elements
+        [element | elements]
+      end)
+
+      if qualified_name == "*" or dom_element.tag_name == qualified_name,
+      do: [dom_element | elements],
+      else: elements
   end
 
-  def get_elements_by_id(dom_element, element_id) do
+  def get_elements_by_id(%{child_nodes: child_nodes} = dom_element, element_id) do
     elements =
-      dom_element.child_nodes
+      child_nodes
       |> Enum.filter(fn
         %{id: id} ->
           id == element_id

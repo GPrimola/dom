@@ -69,35 +69,45 @@ defmodule DOM.DOMNode do
       }
 
       defimpl Enumerable do
+        def count(%{child_nodes: children} = _node)
+            when children == [],
+            do: 1
 
-    def count(%{child_nodes: children} = _node)
-    when children == [], do: 1
+        def count(node) do
+          Enum.reduce(node.child_nodes, 1, fn node, count_nodes ->
+            count_nodes + count(node)
+          end)
+        end
 
-    def count(node) do
-      Enum.reduce(node.child_nodes, 1, fn node, count_nodes ->
-        count_nodes + count(node)
-      end)
-    end
+        def member?(_node, _element), do: {:error, __MODULE__}
 
-    def member?(_node, _element), do: {:error, __MODULE__}
+        @doc """
+          This reduce function traverse the tree in pre-order.
+        """
+        def reduce(_node, {:halt, acc}, _fun), do: {:halted, acc}
+        def reduce(node, {:suspend, acc}, fun), do: {:suspended, acc, &reduce(node, &1, fun)}
 
-    @doc """
-      This reduce function traverse the tree in pre-order.
-    """
-    def reduce(_node, {:halt, acc}, _fun), do: {:halted, acc}
-    def reduce(node, {:suspend, acc}, fun), do: {:suspended, acc, &reduce(node, &1, fun)}
-    def reduce(%{child_nodes: children} = node, {:cont, acc}, fun), do: reduce(children, fun.(node, acc), fun)
-    def reduce([] = _children, {:cont, acc}, fun), do: {:done, acc}
-    def reduce([node | siblings] = _children, {:cont, acc}, fun) do
-      with {:done, accu} <- reduce(node, {:cont, acc}, fun),
-        {:done, accu} <- reduce(siblings, {:cont, accu}, fun) do
-        {:done, accu}
+        def reduce(%{child_nodes: children} = node, {:cont, acc}, fun),
+          do: reduce(children, fun.(node, acc), fun)
+
+        def reduce([] = _children, {:cont, acc}, fun), do: {:done, acc}
+
+        def reduce([node | siblings] = _children, {:cont, acc}, fun) do
+          with {:done, accu} <- reduce(node, {:cont, acc}, fun),
+               {:done, accu} <- reduce(siblings, {:cont, accu}, fun) do
+            {:done, accu}
+          end
+        end
+
+        def slice(node), do: {:error, __MODULE__}
+
+      # defimpl
       end
+
+    # quote
     end
 
-    def slice(node), do: {:error, __MODULE__}
-  end
-    end
+  # defmacro
   end
 
   @type t :: %{
@@ -133,5 +143,27 @@ defmodule DOM.DOMNode do
     child_node = %{child_node | parent_node: dom_node}
     child_nodes = List.insert_at(child_nodes, -1, child_node)
     %{dom_node | child_nodes: child_nodes}
+  end
+
+  @doc """
+    From Mixin ParentNode
+    https://dom.spec.whatwg.org/#interface-parentnode
+  """
+  @spec prepend(__MODULE__.t(), list(__MODULE__.t())) :: __MODULE__.t()
+  def prepend(%{child_nodes: children} = dom_node, first_children) do
+    first_children = Enum.map(first_children, &%{&1 | parent_node: dom_node})
+    new_children = Enum.concat(first_children, children)
+    %{dom_node | child_nodes: new_children}
+  end
+
+  @doc """
+    From Mixin ParentNode
+    https://dom.spec.whatwg.org/#interface-parentnode
+  """
+  @spec append(__MODULE__.t(), list(__MODULE__.t())) :: __MODULE__.t()
+  def append(%{child_nodes: children} = dom_node, last_children) do
+    last_children = Enum.map(last_children, &%{&1 | parent_node: dom_node})
+    new_children = Enum.concat(children, last_children)
+    %{dom_node | child_nodes: new_children}
   end
 end

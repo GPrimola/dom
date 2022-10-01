@@ -4,6 +4,7 @@ defmodule DOM.DOMDocument do
     https://dom.spec.whatwg.org/#interface-document
   """
   use DOM
+  @behaviour NonElementParentNode
 
   defmacro __using__(_opts \\ []) do
     quote do
@@ -81,7 +82,8 @@ defmodule DOM.DOMDocument do
   @doc """
     https://dom.spec.whatwg.org/#dom-document-createattributens
   """
-  @spec create_attribute_ns(DOMDocument.t(), namespace :: binary(), qualified_name :: binary()) :: DOMAttr.t()
+  @spec create_attribute_ns(DOMDocument.t(), namespace :: binary(), qualified_name :: binary()) ::
+          DOMAttr.t()
   def create_attribute_ns(document, namespace, qualified_name) do
     {namespace, prefix, local_name} = validate_and_extract(namespace, qualified_name)
 
@@ -91,7 +93,8 @@ defmodule DOM.DOMDocument do
       node_type: :attribute,
       node_name: local_name,
       owner_document: document,
-      local_name: local_name
+      local_name: local_name,
+      name: local_name
     }
   end
 
@@ -117,7 +120,7 @@ defmodule DOM.DOMDocument do
   """
   @spec create_text_node(DOMDocument.t(), data :: binary()) :: DOMText.t()
   def create_cdata_section(document, data) do
-    if data =~ "]]>", do: raise "InvalidCharacterError"
+    if data =~ "]]>", do: raise("InvalidCharacterError")
 
     %DOMCDataSection{
       node_type: :cdata_section,
@@ -136,7 +139,7 @@ defmodule DOM.DOMDocument do
   """
   @spec create_text_node(DOMDocument.t(), data :: binary()) :: DOMText.t()
   def create_comment(document, data) do
-    if data =~ "]]>", do: raise "InvalidCharacterError"
+    if data =~ "]]>", do: raise("InvalidCharacterError")
 
     %DOMComment{
       node_type: :comment,
@@ -152,9 +155,10 @@ defmodule DOM.DOMDocument do
   @doc """
     https://dom.spec.whatwg.org/#dom-document-createprocessinginstruction
   """
-  @spec create_processing_instruction(DOMDocument.t(), target:: binary(), data :: binary()) :: DOMText.t()
+  @spec create_processing_instruction(DOMDocument.t(), target :: binary(), data :: binary()) ::
+          DOMText.t()
   def create_processing_instruction(document, target, data) do
-    if data =~ "?>", do: raise "InvalidCharacterError"
+    if data =~ "?>", do: raise("InvalidCharacterError")
 
     %DOMProcessingInstruction{
       node_type: :processing_instruction,
@@ -170,7 +174,8 @@ defmodule DOM.DOMDocument do
   @doc """
     https://dom.spec.whatwg.org/#validate-and-extract
   """
-  @spec validate_and_extract(namespace::binary(), qualified_name:: binary()) :: {namespace :: binary(), prefix :: binary(), local_name:: binary()}
+  @spec validate_and_extract(namespace :: binary(), qualified_name :: binary()) ::
+          {namespace :: binary(), prefix :: binary(), local_name :: binary()}
   def validate_and_extract(namespace, qualified_name) do
     namespace = if namespace == "", do: nil, else: namespace
 
@@ -184,4 +189,15 @@ defmodule DOM.DOMDocument do
 
     {namespace, prefix, local_name}
   end
+
+  @impl NonElementParentNode
+  def get_element_by_id(%{document_element: document_element} = _document, element_id)
+  when not is_nil(document_element),
+   do: DOMElement.get_element_by_id(document_element, element_id)
+
+  def get_element_by_id(%{child_nodes: [element | _]} = _document, element_id),
+   do: DOMElement.get_element_by_id(element, element_id)
+
+  def get_element_by_id(_document, _element_id),
+   do: nil
 end

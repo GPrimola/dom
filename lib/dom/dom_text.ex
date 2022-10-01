@@ -8,7 +8,8 @@ defmodule DOM.DOMText do
 
   defstruct @dom_character_data_fields ++ [whole_text: ""]
 
-  @type t :: Map.merge(DOMCharacterData.t(), %__MODULE__{
-    whole_text: binary()
-  })
+  @type t ::
+          Map.merge(DOMCharacterData.t(), %__MODULE__{
+            whole_text: binary()
+          })
 end

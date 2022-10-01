@@ -12,8 +12,9 @@ defmodule DOM.DOMCharacterData do
     end
   end
 
-  @type t :: Map.merge(DOMNode.t(), %{
-    data: binary(),
-    length: integer()
-  })
+  @type t ::
+          Map.merge(DOMNode.t(), %{
+            data: binary(),
+            length: integer()
+          })
 end

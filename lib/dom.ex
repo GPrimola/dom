@@ -15,6 +15,7 @@ defmodule DOM do
         DOMElement,
         DOMMatrix,
         DOMNode,
+        DOMNonElementParentNode,
         DOMPoint,
         DOMProcessingInstruction,
         DOMRect,
