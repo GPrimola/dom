@@ -4,7 +4,7 @@ defmodule DOM.DOMDocument do
     https://dom.spec.whatwg.org/#interface-document
   """
   use DOM
-  @behaviour NonElementParentNode
+  @behaviour DOMNonElementParentNode
 
   defmacro __using__(_opts \\ []) do
     quote do
@@ -181,7 +181,7 @@ defmodule DOM.DOMDocument do
 
     {prefix, local_name} =
       if qualified_name =~ ":" do
-        [prefix | local_name] = String.split(qualified_name, ":", trim: true)
+        [prefix | [local_name]] = String.split(qualified_name, ":", trim: true)
         {prefix, local_name}
       else
         {nil, qualified_name}
@@ -190,13 +190,13 @@ defmodule DOM.DOMDocument do
     {namespace, prefix, local_name}
   end
 
-  @impl NonElementParentNode
+  @impl DOMNonElementParentNode
   def get_element_by_id(%{document_element: document_element} = _document, element_id)
   when not is_nil(document_element),
    do: DOMElement.get_element_by_id(document_element, element_id)
 
-  def get_element_by_id(%{child_nodes: [element | _]} = _document, element_id),
-   do: DOMElement.get_element_by_id(element, element_id)
+  def get_element_by_id(%{child_nodes: _} = dom_document, element_id),
+    do: DOMElement.get_element_by_id(dom_document, element_id)
 
   def get_element_by_id(_document, _element_id),
    do: nil

@@ -166,4 +166,30 @@ defmodule DOM.DOMNode do
     new_children = Enum.concat(children, last_children)
     %{dom_node | child_nodes: new_children}
   end
+
+  def set_owner_document(%{child_nodes: child_nodes} = dom_node, new_owner_document) do
+    child_nodes =
+      Enum.map(child_nodes, &set_owner_document(&1, new_owner_document))
+
+    dom_node =
+      if Map.has_key?(dom_node, :attributes) do
+        Map.update!(dom_node, :attributes, fn attrs ->
+          Enum.map(attrs, fn {attr_name, attr_node} ->
+            {attr_name, set_owner_document(attr_node, new_owner_document)}
+          end)
+        end)
+      else
+        dom_node
+      end
+
+    dom_node = if not is_nil(Map.get(dom_node, :document_element)) do
+      Map.update!(dom_node, :document_element, fn document_element ->
+        %{document_element | owner_document: new_owner_document}
+      end)
+    else
+      dom_node
+    end
+
+    %{dom_node | owner_document: new_owner_document, child_nodes: child_nodes}
+  end
 end

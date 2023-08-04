@@ -74,19 +74,24 @@ defmodule DOM.DOMElement do
   @spec set_attribute(__MODULE__.t(), binary(), binary()) :: __MODULE__.t()
   def set_attribute(element, qualified_name, value)
 
-  def set_attribute(dom_element, qualified_name, value) do
+  def set_attribute(%{owner_document: document} = dom_element, qualified_name, value) do
     qualified_name = String.downcase(qualified_name)
+    qualified_name_atom = String.to_atom(qualified_name)
 
-    attr = %DOMAttr{
-      node_name: qualified_name,
-      node_value: value,
-      text_content: value,
-      owner_document: dom_element.owner_document,
-      owner_element: dom_element,
-      local_name: qualified_name,
-      name: qualified_name,
-      value: value
-    }
+    attr =
+      document
+      |> DOMDocument.create_attribute(qualified_name)
+      |> Map.merge(%{
+        owner_element: dom_element,
+        text_content: value,
+        node_value: value,
+        value: value
+      })
+
+    dom_element =
+      if qualified_name_atom in Map.keys(dom_element),
+      do: Map.put(dom_element, qualified_name_atom, value),
+      else: dom_element
 
     set_attribute_node(dom_element, attr)
   end
@@ -99,8 +104,8 @@ defmodule DOM.DOMElement do
 
   def set_attribute_node(dom_element, %DOMAttr{} = attribute),
     do:
-      Map.update(
-        dom_element,
+      dom_element
+      |> Map.update(
         :attributes,
         [],
         &Keystring.put(&1, attribute.local_name, attribute)
@@ -180,17 +185,13 @@ defmodule DOM.DOMElement do
   def get_elements_by_id(%{child_nodes: child_nodes} = dom_element, element_id) do
     elements =
       child_nodes
-      |> Enum.filter(fn
-        %{id: id} ->
-          id == element_id
-
-        _ ->
-          false
-      end)
       |> Enum.reduce([], fn element, elements ->
-        elements = get_elements_by_id(element, element_id) ++ elements
-        [element | elements]
+        case get_element_by_id(element, element_id) do
+          nil -> elements
+          element -> [element | elements]
+        end
       end)
+      |> Enum.reverse()
 
     if dom_element.id == element_id,
       do: [dom_element | elements],
@@ -206,9 +207,20 @@ defmodule DOM.DOMElement do
   def get_element_by_id(%{id: id} = dom_element, element_id) when id == element_id,
     do: dom_element
 
-  def get_element_by_id(dom_element, element_id) do
-    dom_element
-    |> get_elements_by_id(element_id)
-    |> List.first()
+  def get_element_by_id(%{child_nodes: child_nodes} = _dom_element, element_id) do
+    child_nodes
+      |> Enum.reduce(%{id: nil}, fn
+        child_node, %{id: nil} = _element ->
+          get_element_by_id(child_node, element_id)
+        child_node, nil = _element ->
+          get_element_by_id(child_node, element_id)
+
+        _child_node, %{id: ^element_id} = element ->
+          element
+      end)
+      |> case do
+        %{id: nil} -> nil
+        element -> element
+      end
   end
 end
